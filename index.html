@@ -1,0 +1,1289 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>E-Voting OSIM - MTs Negeri 2 Demak</title>
+    <!-- Google Font Roboto -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <!-- FontAwesome CDN -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        kpuNavy: '#002855',
+                        madrasahGreen: '#0A5C36',
+                        goldAccent: '#BA0C2F',
+                        brandGold: '#D4AF37',
+                        lightBg: '#F4F6F9'
+                    },
+                    fontFamily: {
+                        sans: ['Roboto', 'sans-serif']
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        body {
+            font-family: 'Roboto', sans-serif;
+            background-color: #F4F6F9;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .fade-in {
+            animation: fadeIn 0.4s ease-in-out forwards;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(6px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        /* Custom Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+            height: 6px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #f1f1f1;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #0A5C36;
+            border-radius: 3px;
+        }
+        #confettiCanvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100vw;
+            height: 100vh;
+            pointer-events: none;
+            z-index: 9999;
+        }
+    </style>
+</head>
+<body class="text-gray-800 antialiased flex flex-col min-h-screen">
+
+    <canvas id="confettiCanvas"></canvas>
+
+    <!-- Splash Screen Loader -->
+    <div id="splashScreen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-kpuNavy text-white transition-opacity duration-500">
+        <div class="p-4 bg-white/10 rounded-full mb-4 animate-bounce">
+            <i class="fa-solid fa-box-archive text-5xl text-brandGold"></i>
+        </div>
+        <h1 class="text-2xl md:text-3xl font-extrabold tracking-wide text-center">E-VOTING PEMILIHAN OSIM</h1>
+        <p class="text-sm md:text-base text-gray-200 mt-1">MTs Negeri 2 DEMAK</p>
+        <div class="mt-8 flex items-center space-x-3">
+            <div class="w-4 h-4 bg-brandGold rounded-full animate-ping"></div>
+            <span class="text-xs tracking-wider uppercase text-gray-300">Menghubungkan ke Server Database...</span>
+        </div>
+    </div>
+
+    <!-- Header Utama -->
+    <header class="bg-gradient-to-r from-kpuNavy via-[#003875] to-madrasahGreen text-white shadow-lg sticky top-0 z-30">
+        <div class="max-w-7xl mx-auto px-4 py-3 flex flex-col sm:flex-row justify-between items-center gap-3">
+            <div class="flex items-center space-x-3 text-center sm:text-left">
+                <div class="w-10 h-10 bg-white/10 rounded-lg flex items-center justify-center border border-brandGold/40 text-brandGold font-bold text-xl">
+                    <i class="fa-solid fa-check-to-slot"></i>
+                </div>
+                <div>
+                    <h1 class="font-bold text-base md:text-lg leading-tight uppercase tracking-wider text-white">E-Voting OSIM MTsN 2 DEMAK</h1>
+                    <p class="text-xs text-gray-200">Sistem Pemilihan Ketua & Wakil Ketua OSIM Real-time</p>
+                </div>
+            </div>
+            <!-- Timer & Info Pemilu -->
+            <div class="flex items-center space-x-4 bg-black/20 px-3 py-1.5 rounded-lg border border-white/10 text-xs md:text-sm">
+                <div class="flex items-center space-x-2">
+                    <i class="fa-solid fa-clock text-brandGold animate-pulse"></i>
+                    <span class="text-gray-300 hidden sm:inline">Sisa Waktu:</span>
+                    <span id="countdownDisplay" class="font-mono font-bold text-yellow-300 text-sm">--:--:--</span>
+                </div>
+                <button onclick="openAdminAuthModal()" class="text-xs bg-white/10 hover:bg-white/20 text-white px-2.5 py-1 rounded transition border border-white/20 flex items-center gap-1">
+                    <i class="fa-solid fa-user-shield"></i> <span class="hidden md:inline">Akses Admin</span>
+                </button>
+            </div>
+        </div>
+    </header>
+
+    <!-- Content Container -->
+    <main class="flex-grow max-w-7xl w-full mx-auto p-4 md:p-6">
+
+        <!-- ==================== PAGE 1: LOGIN PEMIH (ID DPT) ==================== -->
+        <section id="loginPage" class="fade-in max-w-md mx-auto my-8">
+            <div class="bg-white rounded-xl shadow-md border border-gray-100 overflow-hidden">
+                <div class="bg-kpuNavy p-6 text-white text-center relative">
+                    <div class="w-16 h-16 bg-white rounded-full mx-auto flex items-center justify-center shadow-inner mb-3 text-madrasahGreen text-2xl border-2 border-brandGold">
+                        <i class="fa-solid fa-users-slash"></i>
+                    </div>
+                    <h2 class="text-xl font-bold">Bilik Suara Digital</h2>
+                    <p class="text-xs text-gray-300 mt-1">Masukkan ID Pemilih Tetap (DPT) Anda</p>
+                </div>
+                <form id="loginForm" onsubmit="handleLogin(event)" class="p-6 space-y-4">
+                    <div>
+                        <label class="block text-xs font-bold text-gray-700 uppercase tracking-wider mb-2">ID PEMILIH (Siswa / Guru)</label>
+                        <div class="relative">
+                            <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                                <i class="fa-solid fa-id-card"></i>
+                            </span>
+                            <input type="text" id="voterIdInput" placeholder="Contoh: SISWA0001 / GURU01" required
+                                class="w-full pl-10 pr-4 py-2.5 border border-gray-300 rounded-lg text-sm font-semibold tracking-wide uppercase focus:ring-2 focus:ring-madrasahGreen focus:border-transparent outline-none transition">
+                        </div>
+                        <p id="loginErrorMessage" class="hidden text-xs font-semibold text-red-600 mt-2 flex items-center gap-1">
+                            <i class="fa-solid fa-circle-exclamation"></i> <span id="loginErrorText">ID Pemilih tidak valid!</span>
+                        </p>
+                    </div>
+
+                    <div class="bg-blue-50 border-l-4 border-blue-500 p-3 rounded text-xs text-blue-800 space-y-1">
+                        <p class="font-bold flex items-center gap-1"><i class="fa-solid fa-circle-info"></i> Petunjuk Pemilihan:</p>
+                        <p>- Format ID Siswa: SISWA0001 - SISWA0930</p>
+                        <p>- Format ID Guru: GURU01 - GURU77</p>
+                        <p>- Setiap ID hanya dapat memberikan suara 1 kali.</p>
+                    </div>
+
+                    <button type="submit" class="w-full py-3 bg-madrasahGreen hover:bg-emerald-800 text-white font-bold rounded-lg shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+                        <span>MASUK KE BILIK SUARA</span>
+                        <i class="fa-solid fa-arrow-right"></i>
+                    </button>
+                </form>
+            </div>
+        </section>
+
+        <!-- ==================== PAGE 2: BILIK SUARA / KERTAS SUARA ==================== -->
+        <section id="votingPage" class="fade-in hidden space-y-6">
+            <!-- User Status Bar -->
+            <div class="bg-white p-4 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-3">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 bg-emerald-100 text-madrasahGreen rounded-full flex items-center justify-center font-bold">
+                        <i class="fa-solid fa-user-check"></i>
+                    </div>
+                    <div>
+                        <span class="text-xs text-gray-500 uppercase font-bold tracking-wider">Identitas Pemilih:</span>
+                        <h3 class="font-bold text-gray-800 text-base" id="activeVoterDisplay">SISWA0001 (Siswa)</h3>
+                    </div>
+                </div>
+                <div class="flex items-center gap-2">
+                    <span class="inline-flex items-center px-2.5 py-1 rounded-full text-xs font-semibold bg-green-100 text-green-800">
+                        <span class="w-2 h-2 bg-green-500 rounded-full mr-1.5 animate-pulse"></span> Hak Pilih Aktif
+                    </span>
+                    <button onclick="logoutVoter()" class="text-xs bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold px-3 py-1.5 rounded transition">
+                        Batal / Keluar
+                    </button>
+                </div>
+            </div>
+
+            <!-- Header Surat Suara -->
+            <div class="text-center bg-kpuNavy text-white p-4 rounded-xl shadow-sm border-t-4 border-brandGold">
+                <h2 class="text-xl md:text-2xl font-extrabold tracking-wider">KERTAS SUARA DIGITAL</h2>
+                <p class="text-xs md:text-sm text-gray-300 mt-1">Gunakan hak pilih Anda secara Jujur dan Adil. Pilih salah satu Pasangan Calon di bawah ini.</p>
+            </div>
+
+            <!-- Paslon Grid -->
+            <div id="paslonContainer" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Paslon Cards dynamic generated by JS -->
+            </div>
+        </section>
+
+        <!-- ==================== PAGE 3: SUKSES VOTE ==================== -->
+        <section id="successPage" class="fade-in hidden max-w-lg mx-auto text-center my-8">
+            <div class="bg-white p-8 rounded-2xl shadow-xl border border-gray-100 space-y-6">
+                <div class="w-20 h-20 bg-green-100 text-madrasahGreen rounded-full mx-auto flex items-center justify-center text-4xl shadow-inner border-2 border-green-400">
+                    <i class="fa-solid fa-check"></i>
+                </div>
+                <div class="space-y-2">
+                    <h2 class="text-2xl font-black text-gray-800">SUARA BERHASIL DIREKAM!</h2>
+                    <p class="text-sm text-gray-600">Terima kasih atas partisipasi aktif Anda dalam Pemilihan Ketua & Wakil Ketua OSIM MTsN 2 DEMAK.</p>
+                </div>
+
+                <!-- Proof Ticket Box -->
+                <div class="bg-lightBg p-4 rounded-xl border border-gray-200 text-left text-xs space-y-2 font-mono">
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-500">ID PEMILIH:</span>
+                        <span id="ticketVoterId" class="font-bold text-gray-800">SISWA0001</span>
+                    </div>
+                    <div class="flex justify-between border-b pb-1">
+                        <span class="text-gray-500">WAKTU TERCATAT:</span>
+                        <span id="ticketTimestamp" class="font-bold text-gray-800">00/00/0000 00:00:00</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-gray-500">STATUS BUKTI:</span>
+                        <span class="font-bold text-emerald-600">TERVERIFIKASI SISTEM (FINAL)</span>
+                    </div>
+                </div>
+
+                <button onclick="resetToLogin()" class="w-full py-3 bg-kpuNavy hover:bg-blue-900 text-white font-bold rounded-lg shadow transition flex items-center justify-center space-x-2">
+                    <i class="fa-solid fa-rotate-left"></i>
+                    <span>Kembali ke Halaman Depan</span>
+                </button>
+            </div>
+        </section>
+
+        <!-- ==================== PAGE 4: DASBOR ADMIN ==================== -->
+        <section id="adminDashboard" class="fade-in hidden space-y-6">
+            <!-- Header Dashboard Admin -->
+            <div class="bg-white p-4 md:p-6 rounded-xl shadow-sm border border-gray-200 flex flex-col md:flex-row justify-between items-center gap-4">
+                <div class="flex items-center space-x-3">
+                    <div class="w-12 h-12 bg-kpuNavy text-brandGold rounded-xl flex items-center justify-center text-2xl font-bold shadow">
+                        <i class="fa-solid fa-chart-line"></i>
+                    </div>
+                    <div>
+                        <h2 class="text-xl font-black text-gray-800 uppercase">Dasbor Rekapitulasi Pemilu</h2>
+                        <p class="text-xs text-gray-500">Panel Kontrol Utama Panitia Pemilihan OSIM MTsN 2 DEMAK</p>
+                    </div>
+                </div>
+                <button onclick="logoutAdmin()" class="bg-red-100 hover:bg-red-200 text-red-700 font-bold px-4 py-2 rounded-lg text-xs md:text-sm transition flex items-center space-x-1">
+                    <i class="fa-solid fa-right-from-bracket"></i>
+                    <span>Keluar Modus Admin</span>
+                </button>
+            </div>
+
+            <!-- Tab Navigation Header -->
+            <div class="flex border-b border-gray-200 bg-white rounded-t-xl px-2 overflow-x-auto">
+                <button onclick="switchAdminTab('liveHasil')" id="tabBtn-liveHasil" class="admin-tab-btn px-4 py-3 text-sm font-bold border-b-2 border-madrasahGreen text-madrasahGreen flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-chart-pie"></i> Hasil Live
+                </button>
+                <button onclick="switchAdminTab('dataPaslon')" id="tabBtn-dataPaslon" class="admin-tab-btn px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-user-pen"></i> Data Paslon
+                </button>
+                <button onclick="switchAdminTab('daftarHadir')" id="tabBtn-daftarHadir" class="admin-tab-btn px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-list-check"></i> Daftar Hadir DPT
+                </button>
+                <button onclick="switchAdminTab('pengaturan')" id="tabBtn-pengaturan" class="admin-tab-btn px-4 py-3 text-sm font-bold border-b-2 border-transparent text-gray-500 hover:text-gray-700 flex items-center gap-2 whitespace-nowrap">
+                    <i class="fa-solid fa-gears"></i> Pengaturan
+                </button>
+            </div>
+
+            <!-- TAB 1: HASIL LIVE REKAPITULASI -->
+            <div id="tabContent-liveHasil" class="admin-tab-content space-y-6">
+                <!-- Stat Cards Grid -->
+                <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 uppercase">Total DPT</span>
+                        <h3 class="text-2xl font-black text-gray-800 mt-1" id="statTotalDPT">1029</h3>
+                        <p class="text-xs text-gray-500 mt-1">Siswa: 952 | Guru: 77</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 uppercase">Suara Masuk</span>
+                        <h3 class="text-2xl font-black text-emerald-600 mt-1" id="statSuaraMasuk">0</h3>
+                        <p class="text-xs text-gray-500 mt-1">Pemilih telah mencoblos</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 uppercase">Belum Memilih</span>
+                        <h3 class="text-2xl font-black text-amber-600 mt-1" id="statBelumMemilih">1029</h3>
+                        <p class="text-xs text-gray-500 mt-1">Pemilih belum mencoblos</p>
+                    </div>
+                    <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm">
+                        <span class="text-xs font-bold text-gray-400 uppercase">Partisipasi Suara</span>
+                        <h3 class="text-2xl font-black text-kpuNavy mt-1" id="statPartisipasi">0%</h3>
+                        <div class="w-full bg-gray-200 h-2 rounded-full mt-2 overflow-hidden">
+                            <div id="partisipasiProgressBar" class="bg-madrasahGreen h-full transition-all duration-500" style="width: 0%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Chart Visualizations -->
+                <div class="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                    <div class="lg:col-span-2 bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-bar text-madrasahGreen"></i> Perolehan Suara Paslon (Jumlah Suara)
+                        </h3>
+                        <div class="relative h-64 md:h-72">
+                            <canvas id="barChartCanvas"></canvas>
+                        </div>
+                    </div>
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm">
+                        <h3 class="font-bold text-gray-800 text-sm md:text-base mb-4 flex items-center gap-2">
+                            <i class="fa-solid fa-chart-pie text-brandGold"></i> Persentase Perolehan (%)
+                        </h3>
+                        <div class="relative h-64 md:h-72 flex items-center justify-center">
+                            <canvas id="doughnutChartCanvas"></canvas>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 2: DATA PASLON -->
+            <div id="tabContent-dataPaslon" class="admin-tab-content hidden space-y-6">
+                <div class="bg-white p-4 rounded-xl border border-gray-200">
+                    <p class="text-xs text-gray-600 mb-4"><i class="fa-solid fa-circle-info text-blue-500"></i> Admin dapat memperbarui nama ketua, wakil, visi-misi, serta foto kandidat. Foto yang diunggah akan di-kompres secara otomatis menggunakan Canvas API ke Base64 agar ringan di database.</p>
+                    <div id="adminPaslonEditGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                        <!-- Dynamic Editable Paslon Cards -->
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 3: DAFTAR HADIR DPT -->
+            <div id="tabContent-daftarHadir" class="admin-tab-content hidden space-y-4">
+                <div class="bg-white p-4 rounded-xl border border-gray-200 shadow-sm flex flex-col sm:flex-row gap-3 justify-between items-center">
+                    <div class="relative w-full sm:w-72">
+                        <span class="absolute inset-y-0 left-0 flex items-center pl-3 text-gray-400">
+                            <i class="fa-solid fa-magnifying-glass"></i>
+                        </span>
+                        <input type="text" id="dptSearchInput" onkeyup="filterDPTTable()" placeholder="Cari ID Pemilih..."
+                            class="w-full pl-9 pr-3 py-2 border border-gray-300 rounded-lg text-xs font-semibold outline-none focus:border-madrasahGreen">
+                    </div>
+                    <div class="flex items-center space-x-2 w-full sm:w-auto">
+                        <label class="text-xs font-bold text-gray-600 whitespace-nowrap">Filter Status:</label>
+                        <select id="dptStatusFilter" onchange="filterDPTTable()" class="border border-gray-300 rounded-lg px-3 py-2 text-xs font-semibold outline-none focus:border-madrasahGreen w-full sm:w-auto">
+                            <option value="ALL">Semua DPT</option>
+                            <option value="VOTED">Telah Memilih</option>
+                            <option value="NOT_VOTED">Belum Memilih</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div class="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+                    <div class="overflow-x-auto max-h-[500px]">
+                        <table class="w-full text-left text-xs">
+                            <thead class="bg-kpuNavy text-white sticky top-0 uppercase font-bold tracking-wider">
+                                <tr>
+                                    <th class="p-3">No</th>
+                                    <th class="p-3">ID Pemilih</th>
+                                    <th class="p-3">Kategori</th>
+                                    <th class="p-3">Status Voting</th>
+                                    <th class="p-3">Waktu Rekam Suara</th>
+                                </tr>
+                            </thead>
+                            <tbody id="dptTableBody" class="divide-y divide-gray-200 font-mono">
+                                <!-- Dynamic DPT Rows -->
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
+            <!-- TAB 4: PENGATURAN -->
+            <div id="tabContent-pengaturan" class="admin-tab-content hidden space-y-6">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <!-- Setting Limit Time -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                        <h3 class="font-bold text-gray-800 text-sm md:text-base border-b pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-clock text-madrasahGreen"></i> Batas Waktu Pemilihan
+                        </h3>
+                        <div>
+                            <label class="block text-xs font-bold text-gray-600 mb-1">Set Waktu Selesai:</label>
+                            <input type="datetime-local" id="votingDeadlineInput" class="w-full border border-gray-300 rounded-lg p-2 text-sm font-semibold outline-none focus:border-madrasahGreen">
+                        </div>
+                        <button onclick="saveVotingDeadline()" class="bg-madrasahGreen hover:bg-emerald-800 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow transition">
+                            Simpan Waktu Pemilihan
+                        </button>
+                    </div>
+
+                    <!-- Export BAP -->
+                    <div class="bg-white p-5 rounded-xl border border-gray-200 shadow-sm space-y-4">
+                        <h3 class="font-bold text-gray-800 text-sm md:text-base border-b pb-2 flex items-center gap-2">
+                            <i class="fa-solid fa-file-contract text-kpuNavy"></i> Ekspor Berita Acara (BAP)
+                        </h3>
+                        <p class="text-xs text-gray-600">Unduh Berita Acara Pemungutan dan Penghitungan Suara resmi Pemilihan OSIM MTsN 2 DEMAK dalam format .txt formal.</p>
+                        <button onclick="exportBAP()" class="bg-kpuNavy hover:bg-blue-900 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow transition flex items-center gap-2">
+                            <i class="fa-solid fa-download"></i> Ekspor BAP (.txt)
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Reset Database Box -->
+                <div class="bg-red-50 border border-red-200 p-5 rounded-xl space-y-3">
+                    <h3 class="font-bold text-red-800 text-sm md:text-base flex items-center gap-2">
+                        <i class="fa-solid fa-triangle-exclamation"></i> Danger Zone: Reset Database
+                    </h3>
+                    <p class="text-xs text-red-700">Tindakan ini akan mengosongkan seluruh perolehan suara paslon dan mengembalikan status semua DPT menjadi "Belum Memilih".</p>
+                    <button onclick="openResetModal()" class="bg-red-600 hover:bg-red-700 text-white font-bold text-xs px-4 py-2.5 rounded-lg shadow transition">
+                        Reset Seluruh Database Suara
+                    </button>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- ==================== MODALS & POP-UPS ==================== -->
+
+    <!-- Modal 1: Konfirmasi Coblos -->
+    <div id="coblosConfirmModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border-2 border-brandGold animate-fade-in">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-amber-100 text-amber-700 rounded-full mx-auto flex items-center justify-center text-xl mb-2">
+                    <i class="fa-solid fa-check-to-slot"></i>
+                </div>
+                <h3 class="text-lg font-black text-gray-800">KONFIRMASI PILIHAN SUARA</h3>
+                <p class="text-xs text-gray-500">Pilihan Anda bersifat final dan tidak dapat diubah!</p>
+            </div>
+
+            <div id="modalPaslonDetailBox" class="bg-lightBg p-4 rounded-xl border border-gray-200 flex items-center space-x-3">
+                <!-- Selected Paslon Details dynamic -->
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeModal('coblosConfirmModal')" class="w-1/2 py-2.5 bg-gray-200 hover:bg-gray-300 text-gray-700 font-bold text-xs rounded-lg transition">
+                    BATAL
+                </button>
+                <button onclick="submitFinalVote()" class="w-1/2 py-2.5 bg-madrasahGreen hover:bg-emerald-800 text-white font-bold text-xs rounded-lg shadow transition">
+                    YA, SAYA YAKIN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 2: Login Admin Auth -->
+    <div id="adminAuthModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-6 space-y-4 shadow-2xl">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-kpuNavy text-white rounded-full mx-auto flex items-center justify-center text-xl mb-2">
+                    <i class="fa-solid fa-lock"></i>
+                </div>
+                <h3 class="text-lg font-black text-gray-800">AUTENTIKASI PANITIA</h3>
+                <p class="text-xs text-gray-500">Masukkan kata sandi admin untuk melanjutkan</p>
+            </div>
+
+            <div>
+                <input type="password" id="adminPasswordInput" placeholder="Password Admin" class="w-full border border-gray-300 p-2.5 rounded-lg text-sm font-semibold outline-none focus:border-kpuNavy">
+                <p id="adminAuthError" class="hidden text-xs text-red-600 font-semibold mt-1">Password salah!</p>
+            </div>
+
+            <div class="flex space-x-2">
+                <button onclick="closeModal('adminAuthModal')" class="w-1/2 py-2 bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">
+                    BATAL
+                </button>
+                <button onclick="verifyAdminAuth()" class="w-1/2 py-2 bg-kpuNavy text-white font-bold text-xs rounded-lg shadow">
+                    MASUK ADMIN
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 3: Confirmation Reset Database (Requires "HAPUS") -->
+    <div id="resetConfirmModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-md w-full p-6 space-y-4 shadow-2xl border-2 border-red-500">
+            <div class="text-center">
+                <div class="w-12 h-12 bg-red-100 text-red-600 rounded-full mx-auto flex items-center justify-center text-xl mb-2">
+                    <i class="fa-solid fa-trash-can"></i>
+                </div>
+                <h3 class="text-lg font-black text-red-600">KONFIRMASI RESET DATABASE</h3>
+                <p class="text-xs text-gray-600">Ketik kata <strong class="text-red-600 font-black">HAPUS</strong> di bawah ini untuk mengonfirmasi reset total.</p>
+            </div>
+
+            <div>
+                <input type="text" id="resetInputWord" placeholder="Ketik HAPUS di sini" class="w-full border border-gray-300 p-2.5 rounded-lg text-center font-bold tracking-widest text-sm uppercase outline-none focus:border-red-500">
+                <p id="resetWordError" class="hidden text-xs text-red-600 font-semibold text-center mt-1">Kata konfirmasi tidak sesuai!</p>
+            </div>
+
+            <div class="flex space-x-3">
+                <button onclick="closeModal('resetConfirmModal')" class="w-1/2 py-2.5 bg-gray-200 text-gray-700 font-bold text-xs rounded-lg">
+                    BATAL
+                </button>
+                <button onclick="executeDatabaseReset()" class="w-1/2 py-2.5 bg-red-600 hover:bg-red-700 text-white font-bold text-xs rounded-lg shadow">
+                    HAPUS SEKARANG
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Modal 4: Generic Alert Notification (Replacing Alert Browser) -->
+    <div id="customAlertModal" class="fixed inset-0 bg-black/60 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-2xl max-w-sm w-full p-5 text-center space-y-3 shadow-2xl">
+            <div id="alertIconBox" class="w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl">
+                <!-- Icon via JS -->
+            </div>
+            <h4 id="alertTitle" class="font-bold text-gray-800 text-base">Notifikasi</h4>
+            <p id="alertMessage" class="text-xs text-gray-600">Pesan notifikasi...</p>
+            <button onclick="closeModal('customAlertModal')" class="w-full py-2 bg-gray-800 hover:bg-gray-900 text-white font-bold text-xs rounded-lg">
+                OK
+            </button>
+        </div>
+    </div>
+
+    <!-- Footer -->
+    <footer class="bg-kpuNavy text-white py-4 mt-auto border-t border-brandGold/30">
+        <div class="max-w-7xl mx-auto px-4 text-center text-xs space-y-1">
+            <p class="font-semibold">Panitia Pemungutan Suara OSIM MTs Negeri 2 DEMAK</p>
+            <p class="text-gray-400">Hak Cipta &copy; 2026. Aplikasi E-Voting Terintegrasi Real-time.</p>
+        </div>
+    </footer>
+
+    <!-- Firebase Modular SDK -->
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, signInAnonymously, signInWithCustomToken } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, updateDoc, onSnapshot, collection } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
+
+        // APP ID & Firebase Init
+        const appId = typeof __app_id !== 'undefined' ? __app_id : 'evoting-mtsn2demak-default';
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {
+            apiKey: "demo-key",
+            authDomain: "demo.firebaseapp.com",
+            projectId: "demo-project",
+            storageBucket: "demo.appspot.com",
+            messagingSenderId: "0000000000",
+            appId: "1:0000000000:web:0000000000"
+        };
+
+        let app, db, auth;
+        let currentUser = null;
+        let isFirestoreReady = false;
+
+        // Default Data Paslon Initial State
+        const defaultPaslonData = [
+            {
+                id: 1,
+                ketua: "Rizqi Syarif",
+                wakil: "Nur Afifah Tri Sugiono",
+                visi: "Mewujudkan OSIM MTsN 2 DEMAK yang Religius, Inovatif, Berprestasi, dan Berwawasan Lingkungan.",
+                misi: "1. Mengintegrasikan kegiatan keagamaan secara rutin.\n2. Mengembangkan bakat minat siswa melalui ekstrakurikuler interaktif.",
+                photo: generateDefaultAvatarSVG("01", "Rizqi & Afifah")
+            },
+            {
+                id: 2,
+                ketua: "Dewi Khasiyanti",
+                wakil: "Khalimatus Sa’diyah",
+                visi: "Menciptakan lingkungan madrasah yang Kolaboratif, Berkarakter, dan Berbudaya Digital.",
+                misi: "1. Menyelenggarakan kegiatan berbasis kepemimpinan muda.\n2. Mendorong efisiensi kegiatan madrasah dengan platform digital.",
+                photo: generateDefaultAvatarSVG("02", "Dewi & Khalimatus")
+            },
+            {
+                id: 3,
+                ketua: "Mayang Ashilla Bintoro",
+                wakil: "Khafidz Muzaki",
+                visi: "Menjadikan OSIM sebagai wadah aspirasi siswa yang aktif, adaptif, dan berakhlaqul karimah.",
+                misi: "1. Membuka forum ruang aspirasi terbuka antar siswa.\n2. Meningkatan solidaritas dan aksi kepedulian sosial.",
+                photo: generateDefaultAvatarSVG("03", "Mayang & Khafidz")
+            }
+        ];
+
+        // Global State Variable
+        window.appState = {
+            dptMap: {}, // Map of Voter Objects { id: { category: 'SISWA/GURU', voted: false, timestamp: null } }
+            paslonList: [...defaultPaslonData],
+            votes: { 1: 0, 2: 0, 3: 0 },
+            votingDeadline: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().slice(0, 16), // default tomorrow
+            activeVoterId: null,
+            selectedPaslonId: null,
+            charts: { bar: null, doughnut: null }
+        };
+
+        // Pre-load 1029 DPT (952 Siswa + 77 Guru)
+        function generateDefaultDPT() {
+            const map = {};
+            // 952 Siswa: SISWA0001 - SISWA0952
+            for (let i = 1; i <= 952; i++) {
+                const id = "SISWA" + String(i).padStart(4, '0');
+                map[id] = { category: "Siswa", voted: false, timestamp: null };
+            }
+            // 77 Guru: GURU01 - GURU77
+            for (let i = 1; i <= 77; i++) {
+                const id = "GURU" + String(i).padStart(2, '0');
+                map[id] = { category: "Pendidik & Tenaga Kependidikan", voted: false, timestamp: null };
+            }
+            return map;
+        }
+
+        window.appState.dptMap = generateDefaultDPT();
+
+        // Canvas Avatar Placeholder Generator
+        function generateDefaultAvatarSVG(number, name) {
+            const canvas = document.createElement('canvas');
+            canvas.width = 300;
+            canvas.height = 300;
+            const ctx = canvas.getContext('2d');
+            
+            // Gradient Background
+            const grad = ctx.createLinearGradient(0, 0, 300, 300);
+            grad.addColorStop(0, '#002855');
+            grad.addColorStop(1, '#0A5C36');
+            ctx.fillStyle = grad;
+            ctx.fillRect(0, 0, 300, 300);
+
+            // Inner Frame
+            ctx.strokeStyle = '#D4AF37';
+            ctx.lineWidth = 8;
+            ctx.strokeRect(12, 12, 276, 276);
+
+            // Text No Urut
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = 'bold 72px Roboto, sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`PASLON ${number}`, 150, 130);
+
+            // Icon Silhouette
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.8)';
+            ctx.font = '20px Roboto, sans-serif';
+            ctx.fillText(name, 150, 180);
+            
+            ctx.font = 'bold 14px Roboto, sans-serif';
+            ctx.fillStyle = '#D4AF37';
+            ctx.fillText('MTs NEGERI 2 DEMAK', 150, 220);
+
+            return canvas.toDataURL('image/png');
+        }
+
+        // Initialize Firebase
+        async function initFirebase() {
+            try {
+                app = initializeApp(firebaseConfig);
+                auth = getAuth(app);
+                db = getFirestore(app);
+
+                // Auth Process
+                if (typeof __initial_auth_token !== 'undefined' && __initial_auth_token) {
+                    await signInWithCustomToken(auth, __initial_auth_token);
+                } else {
+                    await signInAnonymously(auth);
+                }
+                
+                currentUser = auth.currentUser;
+                if (currentUser) {
+                    isFirestoreReady = true;
+                    setupFirestoreRealtimeListener();
+                }
+            } catch (err) {
+                console.warn("Firestore mode offline/fallback initialized:", err);
+                // Fallback to local memory sync
+            } finally {
+                setTimeout(() => {
+                    const splash = document.getElementById('splashScreen');
+                    splash.classList.add('opacity-0');
+                    setTimeout(() => splash.remove(), 500);
+                }, 1000);
+            }
+        }
+
+        // Realtime Listener for Firestore Public State
+        function setupFirestoreRealtimeListener() {
+            if (!isFirestoreReady) return;
+            const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'evoting', 'mainState');
+            
+            onSnapshot(docRef, (snapshot) => {
+                if (snapshot.exists()) {
+                    const data = snapshot.data();
+                    if (data.votes) window.appState.votes = data.votes;
+                    if (data.dptMap) window.appState.dptMap = { ...window.appState.dptMap, ...data.dptMap };
+                    if (data.paslonList) window.appState.paslonList = data.paslonList;
+                    if (data.votingDeadline) window.appState.votingDeadline = data.votingDeadline;
+                    
+                    // Refresh Active UI
+                    updateDashboardCharts();
+                    renderPaslonCards();
+                    renderAdminPaslonEditors();
+                    renderDPTTable();
+                } else {
+                    // Seed initial state to firestore
+                    saveStateToFirestore();
+                }
+            }, (error) => {
+                console.error("Firestore snapshot error:", error);
+            });
+        }
+
+        // Push state update to firestore
+        async function saveStateToFirestore() {
+            if (!isFirestoreReady) return;
+            try {
+                const docRef = doc(db, 'artifacts', appId, 'public', 'data', 'evoting', 'mainState');
+                await setDoc(docRef, {
+                    votes: window.appState.votes,
+                    dptMap: window.appState.dptMap,
+                    paslonList: window.appState.paslonList,
+                    votingDeadline: window.appState.votingDeadline
+                }, { merge: true });
+            } catch (err) {
+                console.error("Failed to sync to Firestore:", err);
+            }
+        }
+
+        window.saveStateToFirestore = saveStateToFirestore;
+
+        // Initialize Firebase on Page Load
+        window.addEventListener('load', () => {
+            initFirebase();
+            startCountdownTimer();
+            renderPaslonCards();
+            renderAdminPaslonEditors();
+            renderDPTTable();
+            initCharts();
+        });
+
+        // Render Paslon Ballot Cards
+        function renderPaslonCards() {
+            const container = document.getElementById('paslonContainer');
+            if (!container) return;
+            container.innerHTML = '';
+
+            window.appState.paslonList.forEach((paslon) => {
+                const card = document.createElement('div');
+                card.className = "bg-white rounded-2xl shadow-md hover:shadow-xl transition-all border border-gray-200 overflow-hidden flex flex-col justify-between";
+                card.innerHTML = `
+                    <div>
+                        <div class="bg-kpuNavy text-white p-3 flex justify-between items-center border-b-2 border-brandGold">
+                            <span class="text-xs uppercase font-bold tracking-widest text-brandGold">Nomor Urut</span>
+                            <span class="w-8 h-8 rounded-full bg-brandGold text-kpuNavy font-black text-lg flex items-center justify-center">${paslon.id}</span>
+                        </div>
+                        <div class="p-4 space-y-3 text-center">
+                            <div class="w-full h-56 bg-gray-100 rounded-xl overflow-hidden border border-gray-200 shadow-inner flex items-center justify-center">
+                                <img src="${paslon.photo}" alt="Foto Paslon ${paslon.id}" class="w-full h-full object-cover">
+                            </div>
+                            <div class="space-y-1">
+                                <h3 class="font-black text-gray-800 text-base md:text-lg leading-tight">${paslon.ketua}</h3>
+                                <p class="text-xs text-emerald-800 font-bold">& ${paslon.wakil}</p>
+                            </div>
+                            <div class="text-left bg-lightBg p-3 rounded-xl border border-gray-200 space-y-1.5 text-xs">
+                                <div>
+                                    <span class="font-bold text-kpuNavy block uppercase text-[10px] tracking-wider">Visi:</span>
+                                    <p class="text-gray-700 italic">${paslon.visi}</p>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-kpuNavy block uppercase text-[10px] tracking-wider">Misi Utama:</span>
+                                    <p class="text-gray-600 whitespace-pre-line">${paslon.misi}</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 bg-gray-50 border-t border-gray-100">
+                        <button onclick="confirmVote(${paslon.id})" class="w-full py-3 bg-madrasahGreen hover:bg-emerald-800 text-white font-extrabold rounded-xl shadow-md hover:shadow-lg transition flex items-center justify-center space-x-2">
+                            <i class="fa-solid fa-check-to-slot text-brandGold"></i>
+                            <span>COBLOS PASLON ${paslon.id}</span>
+                        </button>
+                    </div>
+                `;
+                container.appendChild(card);
+            });
+        }
+
+        window.renderPaslonCards = renderPaslonCards;
+
+        // Login Pemilih Handler
+        window.handleLogin = function(e) {
+            e.preventDefault();
+            const input = document.getElementById('voterIdInput');
+            const errorMsg = document.getElementById('loginErrorMessage');
+            const errorText = document.getElementById('loginErrorText');
+            const rawId = input.value.trim().toUpperCase();
+
+            errorMsg.classList.add('hidden');
+
+            // Validate DPT
+            if (!window.appState.dptMap[rawId]) {
+                errorText.innerText = "ID Pemilih tidak terdaftar di DPT!";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            const voter = window.appState.dptMap[rawId];
+            if (voter.voted) {
+                errorText.innerText = "ID Pemilih ini SUDAH memberikan suara!";
+                errorMsg.classList.remove('hidden');
+                return;
+            }
+
+            // Set Active Voter
+            window.appState.activeVoterId = rawId;
+            document.getElementById('activeVoterDisplay').innerText = `${rawId} (${voter.category})`;
+
+            // Switch to Voting Page
+            document.getElementById('loginPage').classList.add('hidden');
+            document.getElementById('votingPage').classList.remove('hidden');
+            input.value = '';
+        };
+
+        window.logoutVoter = function() {
+            window.appState.activeVoterId = null;
+            document.getElementById('votingPage').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+        };
+
+        // Voting Confirmation Modal Trigger
+        window.confirmVote = function(paslonId) {
+            window.appState.selectedPaslonId = paslonId;
+            const paslon = window.appState.paslonList.find(p => p.id === paslonId);
+            
+            const detailBox = document.getElementById('modalPaslonDetailBox');
+            detailBox.innerHTML = `
+                <img src="${paslon.photo}" class="w-16 h-16 rounded-lg object-cover border">
+                <div>
+                    <span class="text-[10px] font-bold text-brandGold bg-kpuNavy px-2 py-0.5 rounded">PASLON ${paslon.id}</span>
+                    <h4 class="font-bold text-gray-800 text-sm mt-0.5">${paslon.ketua}</h4>
+                    <p class="text-xs text-gray-600">& ${paslon.wakil}</p>
+                </div>
+            `;
+            
+            document.getElementById('coblosConfirmModal').classList.remove('hidden');
+        };
+
+        // Final Submit Vote
+        window.submitFinalVote = async function() {
+            const voterId = window.appState.activeVoterId;
+            const paslonId = window.appState.selectedPaslonId;
+
+            if (!voterId || !paslonId) return;
+
+            // Record Vote
+            window.appState.votes[paslonId] = (window.appState.votes[paslonId] || 0) + 1;
+            const timestamp = new Date().toLocaleString('id-ID');
+            window.appState.dptMap[voterId].voted = true;
+            window.appState.dptMap[voterId].timestamp = timestamp;
+
+            // Save state
+            await saveStateToFirestore();
+
+            // Hide confirmation & voting page
+            closeModal('coblosConfirmModal');
+            document.getElementById('votingPage').classList.add('hidden');
+            
+            // Show Success Page
+            document.getElementById('ticketVoterId').innerText = voterId;
+            document.getElementById('ticketTimestamp').innerText = timestamp;
+            document.getElementById('successPage').classList.remove('hidden');
+
+            // Trigger Confetti Celebration
+            launchConfetti();
+        };
+
+        window.resetToLogin = function() {
+            document.getElementById('successPage').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+            window.appState.activeVoterId = null;
+            window.appState.selectedPaslonId = null;
+        };
+
+        // Custom Canvas Confetti Generator
+        function launchConfetti() {
+            const canvas = document.getElementById('confettiCanvas');
+            const ctx = canvas.getContext('2d');
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+
+            const particles = [];
+            const colors = ['#D4AF37', '#FFFFFF', '#0A5C36', '#002855'];
+
+            for (let i = 0; i < 120; i++) {
+                particles.push({
+                    x: Math.random() * canvas.width,
+                    y: Math.random() * canvas.height - canvas.height,
+                    size: Math.random() * 8 + 4,
+                    color: colors[Math.floor(Math.random() * colors.length)],
+                    speedY: Math.random() * 3 + 2,
+                    speedX: Math.random() * 2 - 1,
+                    rotation: Math.random() * 360,
+                    rotSpeed: Math.random() * 10 - 5
+                });
+            }
+
+            let animationFrame;
+            const startTime = Date.now();
+
+            function render() {
+                ctx.clearRect(0, 0, canvas.width, canvas.height);
+                particles.forEach(p => {
+                    p.y += p.speedY;
+                    p.x += p.speedX;
+                    p.rotation += p.rotSpeed;
+
+                    ctx.save();
+                    ctx.translate(p.x, p.y);
+                    ctx.rotate((p.rotation * Math.PI) / 180);
+                    ctx.fillStyle = p.color;
+                    ctx.fillRect(-p.size / 2, -p.size / 2, p.size, p.size);
+                    ctx.restore();
+                });
+
+                if (Date.now() - startTime < 4000) {
+                    animationFrame = requestAnimationFrame(render);
+                } else {
+                    ctx.clearRect(0, 0, canvas.width, canvas.height);
+                    cancelAnimationFrame(animationFrame);
+                }
+            }
+            render();
+        }
+
+        // Admin Navigation & Authentication
+        window.openAdminAuthModal = function() {
+            document.getElementById('adminPasswordInput').value = '';
+            document.getElementById('adminAuthError').classList.add('hidden');
+            document.getElementById('adminAuthModal').classList.remove('hidden');
+        };
+
+        window.verifyAdminAuth = function() {
+            const pass = document.getElementById('adminPasswordInput').value;
+            if (pass === 'admin123') {
+                closeModal('adminAuthModal');
+                document.getElementById('loginPage').classList.add('hidden');
+                document.getElementById('votingPage').classList.add('hidden');
+                document.getElementById('successPage').classList.add('hidden');
+                document.getElementById('adminDashboard').classList.remove('hidden');
+                updateDashboardCharts();
+            } else {
+                document.getElementById('adminAuthError').classList.remove('hidden');
+            }
+        };
+
+        window.logoutAdmin = function() {
+            document.getElementById('adminDashboard').classList.add('hidden');
+            document.getElementById('loginPage').classList.remove('hidden');
+        };
+
+        window.switchAdminTab = function(tabName) {
+            document.querySelectorAll('.admin-tab-content').forEach(el => el.classList.add('hidden'));
+            document.querySelectorAll('.admin-tab-btn').forEach(btn => {
+                btn.classList.remove('border-madrasahGreen', 'text-madrasahGreen');
+                btn.classList.add('border-transparent', 'text-gray-500');
+            });
+
+            document.getElementById(`tabContent-${tabName}`).classList.remove('hidden');
+            const activeBtn = document.getElementById(`tabBtn-${tabName}`);
+            activeBtn.classList.remove('border-transparent', 'text-gray-500');
+            activeBtn.classList.add('border-madrasahGreen', 'text-madrasahGreen');
+
+            if (tabName === 'liveHasil') updateDashboardCharts();
+        };
+
+        // Chart.js Live Visualization
+        function initCharts() {
+            const ctxBar = document.getElementById('barChartCanvas').getContext('2d');
+            const ctxDoughnut = document.getElementById('doughnutChartCanvas').getContext('2d');
+
+            window.appState.charts.bar = new Chart(ctxBar, {
+                type: 'bar',
+                data: {
+                    labels: ['Paslon 01', 'Paslon 02', 'Paslon 03'],
+                    datasets: [{
+                        label: 'Jumlah Suara',
+                        data: [0, 0, 0],
+                        backgroundColor: ['#002855', '#0A5C36', '#BA0C2F'],
+                        borderRadius: 8
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: { y: { beginAtZero: true, ticks: { stepSize: 1 } } }
+                }
+            });
+
+            window.appState.charts.doughnut = new Chart(ctxDoughnut, {
+                type: 'doughnut',
+                data: {
+                    labels: ['Paslon 01', 'Paslon 02', 'Paslon 03'],
+                    datasets: [{
+                        data: [0, 0, 0],
+                        backgroundColor: ['#002855', '#0A5C36', '#BA0C2F']
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { position: 'bottom' } }
+                }
+            });
+        }
+
+        function updateDashboardCharts() {
+            const v1 = window.appState.votes[1] || 0;
+            const v2 = window.appState.votes[2] || 0;
+            const v3 = window.appState.votes[3] || 0;
+
+            const totalVoted = Object.values(window.appState.dptMap).filter(v => v.voted).length;
+            const totalDPT = Object.keys(window.appState.dptMap).length;
+            const percentage = totalDPT > 0 ? ((totalVoted / totalDPT) * 100).toFixed(1) : 0;
+
+            // Stat Cards
+            document.getElementById('statTotalDPT').innerText = totalDPT;
+            document.getElementById('statSuaraMasuk').innerText = totalVoted;
+            document.getElementById('statBelumMemilih').innerText = totalDPT - totalVoted;
+            document.getElementById('statPartisipasi').innerText = `${percentage}%`;
+            document.getElementById('partisipasiProgressBar').style.width = `${percentage}%`;
+
+            // Update Charts Data
+            if (window.appState.charts.bar) {
+                window.appState.charts.bar.data.datasets[0].data = [v1, v2, v3];
+                window.appState.charts.bar.update();
+            }
+            if (window.appState.charts.doughnut) {
+                window.appState.charts.doughnut.data.datasets[0].data = [v1, v2, v3];
+                window.appState.charts.doughnut.update();
+            }
+        }
+
+        // Admin Paslon Data Editor with Canvas Compression
+        function renderAdminPaslonEditors() {
+            const grid = document.getElementById('adminPaslonEditGrid');
+            if (!grid) return;
+            grid.innerHTML = '';
+
+            window.appState.paslonList.forEach(paslon => {
+                const card = document.createElement('div');
+                card.className = "bg-lightBg p-4 rounded-xl border border-gray-200 space-y-3 text-xs";
+                card.innerHTML = `
+                    <div class="font-bold text-sm text-kpuNavy border-b pb-1">EDIT PASLON NO. ${paslon.id}</div>
+                    <div class="w-full h-36 bg-gray-200 rounded-lg overflow-hidden relative">
+                        <img id="editPreviewPhoto-${paslon.id}" src="${paslon.photo}" class="w-full h-full object-cover">
+                        <label class="absolute bottom-2 right-2 bg-black/70 hover:bg-black text-white px-2 py-1 rounded text-[10px] cursor-pointer">
+                            <i class="fa-solid fa-camera"></i> Ganti Foto
+                            <input type="file" accept="image/*" class="hidden" onchange="compressAndUploadPhoto(event, ${paslon.id})">
+                        </label>
+                    </div>
+                    <div>
+                        <label class="font-bold text-gray-600 block mb-1">Nama Ketua:</label>
+                        <input type="text" id="editKetua-${paslon.id}" value="${paslon.ketua}" class="w-full border p-2 rounded outline-none font-semibold">
+                    </div>
+                    <div>
+                        <label class="font-bold text-gray-600 block mb-1">Nama Wakil:</label>
+                        <input type="text" id="editWakil-${paslon.id}" value="${paslon.wakil}" class="w-full border p-2 rounded outline-none font-semibold">
+                    </div>
+                    <div>
+                        <label class="font-bold text-gray-600 block mb-1">Visi:</label>
+                        <textarea id="editVisi-${paslon.id}" rows="2" class="w-full border p-2 rounded outline-none">${paslon.visi}</textarea>
+                    </div>
+                    <div>
+                        <label class="font-bold text-gray-600 block mb-1">Misi:</label>
+                        <textarea id="editMisi-${paslon.id}" rows="3" class="w-full border p-2 rounded outline-none">${paslon.misi}</textarea>
+                    </div>
+                    <button onclick="savePaslonData(${paslon.id})" class="w-full py-2 bg-madrasahGreen text-white font-bold rounded shadow hover:bg-emerald-800 transition">
+                        Simpan Perubahan
+                    </button>
+                `;
+                grid.appendChild(card);
+            });
+        }
+
+        window.compressAndUploadPhoto = function(event, paslonId) {
+            const file = event.target.files[0];
+            if (!file) return;
+
+            const reader = new FileReader();
+            reader.onload = function(e) {
+                const img = new Image();
+                img.onload = function() {
+                    // Canvas API Compress / Resize
+                    const canvas = document.createElement('canvas');
+                    const ctx = canvas.getContext('2d');
+                    const maxWidth = 500;
+                    const scaleSize = maxWidth / img.width;
+                    canvas.width = maxWidth;
+                    canvas.height = img.height * scaleSize;
+
+                    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                    const compressedBase64 = canvas.toDataURL('image/jpeg', 0.85);
+
+                    document.getElementById(`editPreviewPhoto-${paslonId}`).src = compressedBase64;
+                    const paslon = window.appState.paslonList.find(p => p.id === paslonId);
+                    if (paslon) paslon.photo = compressedBase64;
+                };
+                img.src = e.target.result;
+            };
+            reader.readAsDataURL(file);
+        };
+
+        window.savePaslonData = async function(paslonId) {
+            const paslon = window.appState.paslonList.find(p => p.id === paslonId);
+            if (!paslon) return;
+
+            paslon.ketua = document.getElementById(`editKetua-${paslonId}`).value;
+            paslon.wakil = document.getElementById(`editWakil-${paslonId}`).value;
+            paslon.visi = document.getElementById(`editVisi-${paslonId}`).value;
+            paslon.misi = document.getElementById(`editMisi-${paslonId}`).value;
+
+            await saveStateToFirestore();
+            renderPaslonCards();
+            showCustomAlert("Berhasil!", `Data Paslon ${paslonId} telah diperbarui.`, "success");
+        };
+
+        window.renderAdminPaslonEditors = renderAdminPaslonEditors;
+
+        // Render DPT Attendance Table
+        function renderDPTTable() {
+            const tbody = document.getElementById('dptTableBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+
+            let idx = 1;
+            Object.entries(window.appState.dptMap).forEach(([id, info]) => {
+                const tr = document.createElement('tr');
+                tr.className = "hover:bg-gray-50 border-b";
+                tr.setAttribute('data-id', id);
+                tr.setAttribute('data-voted', info.voted ? 'VOTED' : 'NOT_VOTED');
+
+                tr.innerHTML = `
+                    <td class="p-3 text-gray-500">${idx++}</td>
+                    <td class="p-3 font-bold text-gray-800">${id}</td>
+                    <td class="p-3 text-gray-600">${info.category}</td>
+                    <td class="p-3">
+                        ${info.voted 
+                            ? '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-green-100 text-green-800">Telah Memilih</span>'
+                            : '<span class="px-2 py-0.5 rounded text-[10px] font-bold bg-amber-100 text-amber-800">Belum Memilih</span>'
+                        }
+                    </td>
+                    <td class="p-3 text-gray-500">${info.timestamp || '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        window.filterDPTTable = function() {
+            const query = document.getElementById('dptSearchInput').value.toUpperCase();
+            const filter = document.getElementById('dptStatusFilter').value;
+            const rows = document.querySelectorAll('#dptTableBody tr');
+
+            rows.forEach(row => {
+                const id = row.getAttribute('data-id');
+                const voted = row.getAttribute('data-voted');
+
+                const matchesQuery = id.includes(query);
+                const matchesFilter = (filter === 'ALL') || (voted === filter);
+
+                if (matchesQuery && matchesFilter) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        };
+
+        window.renderDPTTable = renderDPTTable;
+
+        // Countdown Timer Header Function
+        function startCountdownTimer() {
+            setInterval(() => {
+                const display = document.getElementById('countdownDisplay');
+                const target = new Date(window.appState.votingDeadline).getTime();
+                const now = new Date().getTime();
+                const diff = target - now;
+
+                if (diff <= 0) {
+                    display.innerText = "PEMILIHAN DITUTUP";
+                    return;
+                }
+
+                const hours = Math.floor(diff / (1000 * 60 * 60));
+                const mins = Math.floor((diff % (1000 * 60 * 60)) / (1000 * 60));
+                const secs = Math.floor((diff % (1000 * 60)) / 1000);
+
+                display.innerText = `${String(hours).padStart(2, '0')}:${String(mins).padStart(2, '0')}:${String(secs).padStart(2, '0')}`;
+            }, 1000);
+        }
+
+        window.saveVotingDeadline = async function() {
+            const val = document.getElementById('votingDeadlineInput').value;
+            if (!val) return;
+            window.appState.votingDeadline = val;
+            await saveStateToFirestore();
+            showCustomAlert("Berhasil!", "Batas waktu pemilihan telah diperbarui.", "success");
+        };
+
+        // Export BAP Document
+        window.exportBAP = function() {
+            const totalDPT = Object.keys(window.appState.dptMap).length;
+            const totalVoted = Object.values(window.appState.dptMap).filter(v => v.voted).length;
+            const v1 = window.appState.votes[1] || 0;
+            const v2 = window.appState.votes[2] || 0;
+            const v3 = window.appState.votes[3] || 0;
+
+            const textContent = `
+===================================================================
+ BERITA ACARA HASIL PEMUNGUTAN DAN PENGHITUNGAN SUARA
+ PEMILIHAN KETUA DAN WAKIL KETUA OSIM
+ MTs NEGERI 2 DEMAK - PERIODE 2026/2027
+===================================================================
+
+Pada hari ini, tanggal ${new Date().toLocaleDateString('id-ID', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}, telah dilaksanakan Pemilihan Ketua dan Wakil Ketua OSIM secara digital (E-Voting) di MTs Negeri 2 DEMAK.
+
+I. RINCIAN DATA PEMILIH (DPT)
+-------------------------------------------------------------------
+1. Total Daftar Pemilih Tetap (DPT)  : ${totalDPT} Pemilih
+2. Jumlah Pemilih Menggunakan Hak    : ${totalVoted} Suara
+3. Jumlah Pemilih Tidak Menggunakan  : ${totalDPT - totalVoted} Suara
+4. Persentase Partisipasi            : ${((totalVoted/totalDPT)*100).toFixed(2)}%
+
+II. PEROLEHAN SUARA PASANGAN CALON
+-------------------------------------------------------------------
+Paslon 01: ${window.appState.paslonList[0].ketua} & ${window.appState.paslonList[0].wakil}
+-> Perolehan Suara: ${v1} Suara (${totalVoted > 0 ? ((v1/totalVoted)*100).toFixed(2) : 0}%)
+
+Paslon 02: ${window.appState.paslonList[1].ketua} & ${window.appState.paslonList[1].wakil}
+-> Perolehan Suara: ${v2} Suara (${totalVoted > 0 ? ((v2/totalVoted)*100).toFixed(2) : 0}%)
+
+Paslon 03: ${window.appState.paslonList[2].ketua} & ${window.appState.paslonList[2].wakil}
+-> Perolehan Suara: ${v3} Suara (${totalVoted > 0 ? ((v3/totalVoted)*100).toFixed(2) : 0}%)
+
+III. CATATAN / KETERANGAN
+-------------------------------------------------------------------
+Seluruh data pemungutan suara telah terverifikasi secara real-time
+oleh sistem database terenkripsi E-Voting MTs Negeri 2 DEMAK.
+
+Demikian Berita Acara ini dibuat dengan sebenarnya untuk dipergunakan
+sebagaimana mestinya.
+
+Panitia Pemilihan OSIM (PPO)
+MTs Negeri 2 DEMAK
+            `.trim();
+
+            const blob = new Blob([textContent], { type: 'text/plain;charset=utf-8' });
+            const link = document.createElement('a');
+            link.href = URL.createObjectURL(blob);
+            link.download = `BAP_Pemilihan_OSIM_MTsN2DEMAK_${Date.now()}.txt`;
+            link.click();
+        };
+
+        // Reset Database Operations
+        window.openResetModal = function() {
+            document.getElementById('resetInputWord').value = '';
+            document.getElementById('resetWordError').classList.add('hidden');
+            document.getElementById('resetConfirmModal').classList.remove('hidden');
+        };
+
+        window.executeDatabaseReset = async function() {
+            const word = document.getElementById('resetInputWord').value.trim();
+            if (word !== 'HAPUS') {
+                document.getElementById('resetWordError').classList.remove('hidden');
+                return;
+            }
+
+            // Reset Votes & DPT Status
+            window.appState.votes = { 1: 0, 2: 0, 3: 0 };
+            Object.keys(window.appState.dptMap).forEach(key => {
+                window.appState.dptMap[key].voted = false;
+                window.appState.dptMap[key].timestamp = null;
+            });
+
+            await saveStateToFirestore();
+            closeModal('resetConfirmModal');
+            updateDashboardCharts();
+            renderDPTTable();
+            showCustomAlert("Database Direset!", "Seluruh perolehan suara telah dikembalikan ke 0.", "danger");
+        };
+
+        // Global Modal Helpers
+        window.closeModal = function(id) {
+            document.getElementById(id).classList.add('hidden');
+        };
+
+        window.showCustomAlert = function(title, message, type = 'info') {
+            const modal = document.getElementById('customAlertModal');
+            const iconBox = document.getElementById('alertIconBox');
+            
+            document.getElementById('alertTitle').innerText = title;
+            document.getElementById('alertMessage').innerText = message;
+
+            if (type === 'success') {
+                iconBox.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl bg-green-100 text-green-600";
+                iconBox.innerHTML = '<i class="fa-solid fa-circle-check"></i>';
+            } else if (type === 'danger') {
+                iconBox.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl bg-red-100 text-red-600";
+                iconBox.innerHTML = '<i class="fa-solid fa-triangle-exclamation"></i>';
+            } else {
+                iconBox.className = "w-12 h-12 rounded-full mx-auto flex items-center justify-center text-xl bg-blue-100 text-blue-600";
+                iconBox.innerHTML = '<i class="fa-solid fa-circle-info"></i>';
+            }
+
+            modal.classList.remove('hidden');
+        };
+    </script>
+</body>
+</html>
